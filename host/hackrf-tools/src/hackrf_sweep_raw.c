@@ -179,7 +179,6 @@ uint32_t amp_enable;
 bool antenna = false;
 uint32_t antenna_enable;
 
-bool binary_output = false;
 bool ifft_output = false;
 bool one_shot = false;
 bool finite_mode = false;
@@ -209,8 +208,6 @@ int rx_callback(hackrf_transfer* transfer) {
 	int8_t* buf;
 	uint8_t* ubuf;
 	uint64_t frequency; /* in Hz */
-	uint64_t band_edge;
-	uint32_t record_length;
 	int i, j, ifft_bins;
 	struct tm *fft_time;
 	char time_str[50];
@@ -285,24 +282,7 @@ int rx_callback(hackrf_transfer* transfer) {
 		for (i=0; i < fftSize; i++) {
 			pwr[i] = logPower(fftwOut[i], 1.0f / fftSize);
 		}
-		if(binary_output) {
-			record_length = 2 * sizeof(band_edge)
-					+ (fftSize/4) * sizeof(float);
-
-			fwrite(&record_length, sizeof(record_length), 1, outfile);
-			band_edge = frequency;
-			fwrite(&band_edge, sizeof(band_edge), 1, outfile);
-			band_edge = frequency + DEFAULT_SAMPLE_RATE_HZ / 4;
-			fwrite(&band_edge, sizeof(band_edge), 1, outfile);
-			fwrite(&pwr[1+(fftSize*5)/8], sizeof(float), fftSize/4, outfile);
-
-			fwrite(&record_length, sizeof(record_length), 1, outfile);
-			band_edge = frequency + DEFAULT_SAMPLE_RATE_HZ / 2;
-			fwrite(&band_edge, sizeof(band_edge), 1, outfile);
-			band_edge = frequency + (DEFAULT_SAMPLE_RATE_HZ * 3) / 4;
-			fwrite(&band_edge, sizeof(band_edge), 1, outfile);
-			fwrite(&pwr[1+fftSize/8], sizeof(float), fftSize/4, outfile);
-		} else if(ifft_output) {
+		if(ifft_output) {
 			ifft_idx = (uint32_t) round((frequency - (uint64_t)(FREQ_ONE_MHZ*frequencies[0]))
 					/ fft_bin_width);
 			ifft_idx = (ifft_idx + ifft_bins/2) % ifft_bins;
@@ -360,7 +340,6 @@ static void usage() {
 	fprintf(stderr, "\t[-w bin_width] # FFT bin width (frequency resolution) in Hz\n");
 	fprintf(stderr, "\t[-1] # one shot mode\n");
 	fprintf(stderr, "\t[-N num_sweeps] # Number of sweeps to perform\n");
-	fprintf(stderr, "\t[-B] # binary output\n");
 	fprintf(stderr, "\t[-I] # binary inverse FFT output\n");
 	fprintf(stderr, "\t-r filename # output file\n");
 	fprintf(stderr, "\n");
@@ -404,7 +383,7 @@ int main(int argc, char** argv) {
 
 	while( (opt = getopt(argc, argv, "a:f:p:l:g:d:n:N:w:1BIr:h?")) != EOF ) {
 		result = HACKRF_SUCCESS;
-		switch( opt ) 
+		switch( opt )
 		{
 		case 'd':
 			serial_number = optarg;
@@ -473,10 +452,6 @@ int main(int argc, char** argv) {
 			one_shot = true;
 			break;
 
-		case 'B':
-			binary_output = true;
-			break;
-
 		case 'I':
 			ifft_output = true;
 			break;
@@ -495,12 +470,12 @@ int main(int argc, char** argv) {
 			usage();
 			return EXIT_FAILURE;
 		}
-		
+
 		if( result != HACKRF_SUCCESS ) {
 			fprintf(stderr, "argument error: '-%c %s' %s (%d)\n", opt, optarg, hackrf_error_name(result), result);
 			usage();
 			return EXIT_FAILURE;
-		}		
+		}
 	}
 
 	if (lna_gain % 8)
@@ -539,11 +514,6 @@ int main(int argc, char** argv) {
 		frequencies[0] = (uint16_t)freq_min;
 		frequencies[1] = (uint16_t)freq_max;
 		num_ranges++;
-	}
-
-	if(binary_output && ifft_output) {
-		fprintf(stderr, "argument error: binary output (-B) and IFFT output (-I) are mutually exclusive.\n");
-		return EXIT_FAILURE;
 	}
 
 	if(ifft_output && (1 < num_ranges)) {
@@ -587,7 +557,7 @@ int main(int argc, char** argv) {
 		usage();
 		return EXIT_FAILURE;
 	}
-	
+
 	result = hackrf_open_by_serial(serial_number, &device);
 	if( result != HACKRF_SUCCESS ) {
 		fprintf(stderr, "hackrf_open() failed: %s (%d)\n", hackrf_error_name(result), result);
@@ -727,7 +697,7 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	result = hackrf_is_streaming(device);	
+	result = hackrf_is_streaming(device);
 	if (do_exit) {
 		fprintf(stderr, "\nExiting...\n");
 	} else {
