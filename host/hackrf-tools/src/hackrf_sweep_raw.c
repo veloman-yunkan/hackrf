@@ -179,7 +179,6 @@ uint32_t amp_enable;
 bool antenna = false;
 uint32_t antenna_enable;
 
-bool ifft_output = false;
 bool one_shot = false;
 bool finite_mode = false;
 volatile bool sweep_started = false;
@@ -208,7 +207,7 @@ int rx_callback(hackrf_transfer* transfer) {
 	int8_t* buf;
 	uint8_t* ubuf;
 	uint64_t frequency; /* in Hz */
-	int i, j, ifft_bins;
+	int i, j;
 	struct tm *fft_time;
 	char time_str[50];
 	struct timeval usb_transfer_time;
@@ -220,7 +219,6 @@ int rx_callback(hackrf_transfer* transfer) {
 	gettimeofday(&usb_transfer_time, NULL);
 	byte_count += transfer->valid_length;
 	buf = (int8_t*) transfer->buffer;
-	ifft_bins = fftSize * step_count;
 	for(j=0; j<BLOCKS_PER_TRANSFER; j++) {
 		ubuf = (uint8_t*) buf;
 		if(ubuf[0] == 0x7F && ubuf[1] == 0x7F) {
@@ -233,15 +231,6 @@ int rx_callback(hackrf_transfer* transfer) {
 		}
 		if (frequency == (uint64_t)(FREQ_ONE_MHZ*frequencies[0])) {
 			if(sweep_started) {
-				if(ifft_output) {
-					fftwf_execute(ifftwPlan);
-					for(i=0; i < ifft_bins; i++) {
-						ifftwOut[i][0] *= 1.0f / ifft_bins;
-						ifftwOut[i][1] *= 1.0f / ifft_bins;
-						fwrite(&ifftwOut[i][0], sizeof(float), 1, outfile);
-						fwrite(&ifftwOut[i][1], sizeof(float), 1, outfile);
-					}
-				}
 				sweep_count++;
 				if(one_shot) {
 					do_exit = true;
@@ -282,21 +271,7 @@ int rx_callback(hackrf_transfer* transfer) {
 		for (i=0; i < fftSize; i++) {
 			pwr[i] = logPower(fftwOut[i], 1.0f / fftSize);
 		}
-		if(ifft_output) {
-			ifft_idx = (uint32_t) round((frequency - (uint64_t)(FREQ_ONE_MHZ*frequencies[0]))
-					/ fft_bin_width);
-			ifft_idx = (ifft_idx + ifft_bins/2) % ifft_bins;
-			for(i = 0; (fftSize / 4) > i; i++) {
-				ifftwIn[ifft_idx + i][0] = fftwOut[i + 1 + (fftSize*5)/8][0];
-				ifftwIn[ifft_idx + i][1] = fftwOut[i + 1 + (fftSize*5)/8][1];
-			}
-			ifft_idx += fftSize / 2;
-			ifft_idx %= ifft_bins;
-			for(i = 0; (fftSize / 4) > i; i++) {
-				ifftwIn[ifft_idx + i][0] = fftwOut[i + 1 + (fftSize/8)][0];
-				ifftwIn[ifft_idx + i][1] = fftwOut[i + 1 + (fftSize/8)][1];
-			}
-		} else {
+        {
 			time_t time_stamp_seconds = time_stamp.tv_sec;
 			fft_time = localtime(&time_stamp_seconds);
 			strftime(time_str, 50, "%Y-%m-%d, %H:%M:%S", fft_time);
@@ -340,7 +315,6 @@ static void usage() {
 	fprintf(stderr, "\t[-w bin_width] # FFT bin width (frequency resolution) in Hz\n");
 	fprintf(stderr, "\t[-1] # one shot mode\n");
 	fprintf(stderr, "\t[-N num_sweeps] # Number of sweeps to perform\n");
-	fprintf(stderr, "\t[-I] # binary inverse FFT output\n");
 	fprintf(stderr, "\t-r filename # output file\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Output fields:\n");
@@ -452,10 +426,6 @@ int main(int argc, char** argv) {
 			one_shot = true;
 			break;
 
-		case 'I':
-			ifft_output = true;
-			break;
-
 		case 'r':
 			path = optarg;
 			break;
@@ -514,11 +484,6 @@ int main(int argc, char** argv) {
 		frequencies[0] = (uint16_t)freq_min;
 		frequencies[1] = (uint16_t)freq_max;
 		num_ranges++;
-	}
-
-	if(ifft_output && (1 < num_ranges)) {
-		fprintf(stderr, "argument error: only one frequency range is supported in IFFT output (-I) mode.\n");
-		return EXIT_FAILURE;
 	}
 
 	if(4 > fftSize) {
@@ -627,12 +592,6 @@ int main(int argc, char** argv) {
 		frequencies[2*i+1] = (uint16_t) (frequencies[2*i] + step_count * TUNE_STEP);
 		fprintf(stderr, "Sweeping from %u MHz to %u MHz\n",
 				frequencies[2*i], frequencies[2*i+1]);
-	}
-
-	if(ifft_output) {
-		ifftwIn = (fftwf_complex*)fftwf_malloc(sizeof(fftwf_complex) * fftSize * step_count);
-		ifftwOut = (fftwf_complex*)fftwf_malloc(sizeof(fftwf_complex) * fftSize * step_count);
-		ifftwPlan = fftwf_plan_dft_1d(fftSize * step_count, ifftwIn, ifftwOut, FFTW_BACKWARD, FFTW_MEASURE);
 	}
 
 	result = hackrf_init_sweep(device, frequencies, num_ranges, num_samples * 2,
