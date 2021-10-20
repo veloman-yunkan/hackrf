@@ -206,7 +206,7 @@ float logPower(fftwf_complex in, float scale)
 int rx_callback(hackrf_transfer* transfer) {
 	int8_t* buf;
 	uint8_t* ubuf;
-	uint64_t frequency; /* in Hz */
+	uint64_t frequency = UINT64_MAX; /* in Hz */
 	uint64_t band_edge;
 	uint32_t record_length;
 	int i, j, ifft_bins;

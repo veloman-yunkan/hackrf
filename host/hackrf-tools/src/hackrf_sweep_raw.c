@@ -215,7 +215,7 @@ int output_samples(uint64_t freq, int8_t* samples, uint32_t n)
 int rx_callback(hackrf_transfer* transfer) {
 	int8_t* buf;
 	uint8_t* ubuf;
-	uint64_t frequency; /* in Hz */
+	uint64_t frequency = UINT64_MAX; /* in Hz */
 	int i, j;
 	struct tm *fft_time;
 	char time_str[50];
