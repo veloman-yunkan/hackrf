@@ -205,7 +205,7 @@ int rx_callback(hackrf_transfer* transfer) {
 	gettimeofday(&usb_transfer_time, NULL);
 	byte_count += transfer->valid_length;
 	buf = (int8_t*) transfer->buffer;
-	for(j=0; j<BLOCKS_PER_TRANSFER; j++) {
+	for(j=0; j<BLOCKS_PER_TRANSFER; j++, buf += BYTES_PER_BLOCK) {
 		ubuf = (uint8_t*) buf;
 		if(ubuf[0] == 0x7F && ubuf[1] == 0x7F) {
 			frequency = ((uint64_t)(ubuf[9]) << 56) | ((uint64_t)(ubuf[8]) << 48) | ((uint64_t)(ubuf[7]) << 40)
@@ -214,7 +214,6 @@ int rx_callback(hackrf_transfer* transfer) {
 			printf("freq=%" PRIu64 "\n", frequency);
 			output_samples(buf+10, (BYTES_PER_BLOCK-10)/2);
 		} else {
-			buf += BYTES_PER_BLOCK;
 			continue;
 		}
 		if (frequency == (uint64_t)(FREQ_ONE_MHZ*frequencies[0]) + OFFSET) {
@@ -240,15 +239,6 @@ int rx_callback(hackrf_transfer* transfer) {
 		if(do_exit) {
 			return 0;
 		}
-		if(!sweep_started) {
-			buf += BYTES_PER_BLOCK;
-			continue;
-		}
-		if((FREQ_MAX_MHZ * FREQ_ONE_MHZ) < frequency) {
-			buf += BYTES_PER_BLOCK;
-			continue;
-		}
-		buf += BYTES_PER_BLOCK;
 	}
 	return 0;
 }
