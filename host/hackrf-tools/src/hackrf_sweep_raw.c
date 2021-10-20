@@ -567,6 +567,9 @@ int main(int argc, char** argv) {
 	signal(SIGSEGV, &sigint_callback_handler);
 	signal(SIGTERM, &sigint_callback_handler);
 	signal(SIGABRT, &sigint_callback_handler);
+#ifndef _WIN32
+	signal(SIGPIPE, &sigint_callback_handler);
+#endif
 #endif
 	fprintf(stderr, "call hackrf_sample_rate_set(%.03f MHz)\n",
 		   ((float)DEFAULT_SAMPLE_RATE_HZ/(float)FREQ_ONE_MHZ));
