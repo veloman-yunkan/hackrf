@@ -182,9 +182,8 @@ bool one_shot = false;
 bool finite_mode = false;
 volatile bool sweep_started = false;
 
-int output_samples(uint64_t freq, int8_t* samples, uint32_t n)
+int output_samples(int8_t* samples, uint32_t n)
 {
-	printf("freq=%" PRIu64 "\n", freq);
 	for ( ; n; --n, samples += 2 ) {
 		printf("%hhd %hhd\n", *samples, *(samples+1));
 	}
@@ -212,7 +211,8 @@ int rx_callback(hackrf_transfer* transfer) {
 			frequency = ((uint64_t)(ubuf[9]) << 56) | ((uint64_t)(ubuf[8]) << 48) | ((uint64_t)(ubuf[7]) << 40)
 					| ((uint64_t)(ubuf[6]) << 32) | ((uint64_t)(ubuf[5]) << 24) | ((uint64_t)(ubuf[4]) << 16)
 					| ((uint64_t)(ubuf[3]) << 8) | ubuf[2];
-			output_samples(frequency, buf+10, (BYTES_PER_BLOCK-10)/2);
+			printf("freq=%" PRIu64 "\n", frequency);
+			output_samples(buf+10, (BYTES_PER_BLOCK-10)/2);
 		} else {
 			buf += BYTES_PER_BLOCK;
 			continue;
