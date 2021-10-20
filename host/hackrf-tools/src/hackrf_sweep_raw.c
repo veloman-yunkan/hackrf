@@ -214,7 +214,9 @@ int rx_callback(hackrf_transfer* transfer) {
 			printf("freq=%" PRIu64 "\n", frequency);
 			output_samples(buf+10, (BYTES_PER_BLOCK-10)/2);
 		} else {
-			continue;
+			if ( frequency != UINT64_MAX ) {
+				output_samples(buf, BYTES_PER_BLOCK/2);
+			}
 		}
 		if (frequency == (uint64_t)(FREQ_ONE_MHZ*frequencies[0]) + OFFSET) {
 			if(sweep_started) {

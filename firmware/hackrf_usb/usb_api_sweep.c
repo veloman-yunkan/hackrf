@@ -110,6 +110,12 @@ static void set_block_header(uint8_t* buffer, uint64_t freq) {
     *(buffer+9) = (freq >> 56) & 0xff;
 }
 
+static void ensure_against_accidental_block_header(uint8_t* buffer) {
+    if ( *buffer == 0x7f && *(buffer+1) == 0x7f ) {
+        *buffer = 0x7e;
+    }
+}
+
 void sweep_mode(uint32_t seq) {
 	// Sweep mode is implemented using timed M0 operations, as follows:
 	//
@@ -162,7 +168,11 @@ void sweep_mode(uint32_t seq) {
 
 		// Write metadata to buffer.
 		buffer = &usb_bulk_buffer[phase * 0x4000];
-		set_block_header(buffer, sweep_freq + offset);
+		if ( blocks_queued == 0 ) {
+			set_block_header(buffer, sweep_freq + offset);
+		} else {
+			ensure_against_accidental_block_header(buffer);
+		}
 
 		// Set up IN transfer of buffer.
 		usb_transfer_schedule_block(
