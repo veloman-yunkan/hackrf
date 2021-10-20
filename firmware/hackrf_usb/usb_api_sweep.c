@@ -97,6 +97,19 @@ void sweep_bulk_transfer_complete(void *user_data, unsigned int bytes_transferre
 	m0_state.m4_count += 3 * 0x4000;
 }
 
+static void set_block_header(uint8_t* buffer, uint64_t freq) {
+    *buffer = 0x7f;
+    *(buffer+1) = 0x7f;
+    *(buffer+2) = freq & 0xff;
+    *(buffer+3) = (freq >> 8) & 0xff;
+    *(buffer+4) = (freq >> 16) & 0xff;
+    *(buffer+5) = (freq >> 24) & 0xff;
+    *(buffer+6) = (freq >> 32) & 0xff;
+    *(buffer+7) = (freq >> 40) & 0xff;
+    *(buffer+8) = (freq >> 48) & 0xff;
+    *(buffer+9) = (freq >> 56) & 0xff;
+}
+
 void sweep_mode(uint32_t seq) {
 	// Sweep mode is implemented using timed M0 operations, as follows:
 	//
@@ -149,19 +162,7 @@ void sweep_mode(uint32_t seq) {
 
 		// Write metadata to buffer.
 		buffer = &usb_bulk_buffer[phase * 0x4000];
-		{
-		const uint64_t freq = sweep_freq + offset;
-		*buffer = 0x7f;
-		*(buffer+1) = 0x7f;
-		*(buffer+2) = freq & 0xff;
-		*(buffer+3) = (freq >> 8) & 0xff;
-		*(buffer+4) = (freq >> 16) & 0xff;
-		*(buffer+5) = (freq >> 24) & 0xff;
-		*(buffer+6) = (freq >> 32) & 0xff;
-		*(buffer+7) = (freq >> 40) & 0xff;
-		*(buffer+8) = (freq >> 48) & 0xff;
-		*(buffer+9) = (freq >> 56) & 0xff;
-		}
+		set_block_header(buffer, sweep_freq + offset);
 
 		// Set up IN transfer of buffer.
 		usb_transfer_schedule_block(
