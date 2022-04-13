@@ -235,7 +235,7 @@ int rx_callback(hackrf_transfer* transfer) {
 			buf += BYTES_PER_BLOCK;
 			continue;
 		}
-		if (frequency == (uint64_t)(FREQ_ONE_MHZ*frequencies[0])) {
+		if (frequency == (uint64_t)(FREQ_ONE_MHZ*frequencies[0]) + OFFSET) {
 			if(sweep_started) {
 				if(ifft_output) {
 					fftwf_execute(ifftwPlan);
@@ -296,7 +296,7 @@ int rx_callback(hackrf_transfer* transfer) {
 			fwrite(&band_edge, sizeof(band_edge), 1, outfile);
 			fwrite(&pwr[1+fftSize/8], sizeof(float), fftSize/4, outfile);
 		} else if(ifft_output) {
-			ifft_idx = (uint32_t) round((frequency - (uint64_t)(FREQ_ONE_MHZ*frequencies[0]))
+			ifft_idx = (uint32_t) round((frequency - (uint64_t)(FREQ_ONE_MHZ*frequencies[0]) - OFFSET)
 					/ fft_bin_width);
 			ifft_idx = (ifft_idx + ifft_bins/2) % ifft_bins;
 			for(i = 0; (fftSize / 4) > i; i++) {

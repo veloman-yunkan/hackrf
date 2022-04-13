@@ -239,7 +239,7 @@ int rx_callback(hackrf_transfer* transfer) {
 			buf += BYTES_PER_BLOCK;
 			continue;
 		}
-		if (frequency == (uint64_t)(FREQ_ONE_MHZ*frequencies[0])) {
+		if (frequency == (uint64_t)(FREQ_ONE_MHZ*frequencies[0]) + OFFSET) {
 			if(sweep_started) {
 				sweep_count++;
 				if(one_shot) {
